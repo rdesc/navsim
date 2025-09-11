@@ -33,4 +33,4 @@ python "$NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_create_submission_pickle.
   "institution='$INSTITUTION'" \
   "country='$COUNTRY'" \
   "synthetic_sensor_path='$SYNTHETIC_SENSOR_PATH'" \
-  "synthetic_scenes_path='$SYNTHETIC
+  "synthetic_scenes_path='$SYNTHETIC_SCENES_PATH'"
