@@ -60,6 +60,10 @@ def run_test_evaluation(
     for token in tqdm(input_loader.tokens_stage_one, desc="Running first stage evaluation"):
         try:
             agent_input = input_loader.get_agent_input_from_token(token)
+
+            # rdesc: add the token info to the agent input
+            agent_input.token = token
+
             trajectory = agent.compute_trajectory(agent_input)
             first_stage_output.update({token: trajectory})
         except Exception:
@@ -74,6 +78,10 @@ def run_test_evaluation(
     for token in tqdm(scene_loader_tokens_stage_two, desc="Running second stage evaluation"):
         try:
             agent_input = input_loader.get_agent_input_from_token(token)
+            
+            # rdesc: add the token info to the agent input
+            agent_input.token = token
+            
             trajectory = agent.compute_trajectory(agent_input)
             second_stage_output.update({token: trajectory})
         except Exception:

@@ -1,0 +1,12 @@
+_target_: navsim.agents.poutine_agent.PoutineAgent
+
+_convert_: 'all'
+
+trajectory_sampling:
+  _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+  _convert_: 'all'
+  time_horizon: 4
+  interval_length: 0.25
+load_predictions_from_file: null
+cache_dataset_to_file: false
+jpeg_root_paths: null

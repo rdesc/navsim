@@ -27,3 +27,5 @@ dataset
 
 # running scripts
 scripts_dev/*
+
+download/navsim_dataset*
