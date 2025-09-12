@@ -16,7 +16,7 @@ if [ -n "$LOAD_PREDICTIONS_FROM_FILE" ]; then
   CACHE_DATASET_TO_FILE=""
   EXPERIMENT_NAME=submission_poutine_agent_${TRAIN_TEST_SPLIT}
 else
-  CACHE_DATASET_TO_FILE="$DATASET_ROOT/poutine_processed_navsim/dataset_pickles/ego_status_dataset_navsim_${EVAL_MODE}_split_${TRAIN_TEST_SPLIT}3.json"
+  CACHE_DATASET_TO_FILE="$DATASET_ROOT/poutine_processed_navsim/dataset_pickles/ego_status_dataset_navsim_${EVAL_MODE}_split_${TRAIN_TEST_SPLIT}.json"
   EXPERIMENT_NAME=submission_poutine_agent_dummy
 fi
 

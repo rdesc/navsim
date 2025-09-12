@@ -63,7 +63,7 @@ def interp_trajectory(
         else:
             cutoff = 1  # fallback to linear if not enough points
 
-        # # linear part
+        # linear part
         if cutoff < len(traj_with_anchor):
             lin_x = interp1d(t_src[cutoff - 1:], traj_with_anchor[cutoff - 1:, 0], kind="linear")
             lin_y = interp1d(t_src[cutoff - 1:], traj_with_anchor[cutoff - 1:, 1], kind="linear")
