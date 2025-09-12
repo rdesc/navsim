@@ -1,7 +1,7 @@
 _target_: navsim.common.dataclasses.SceneFilter
 _convert_: 'all'
 
-num_history_frames: 4 # number of past frames to be extracted, frames are at 2Hz (1=ony current frame, 2=1 second)
+num_history_frames: 4 # number of past frames to be extracted, frames are at 2Hz (1=ony current frame, 2=0.5 seconds)
 num_future_frames: 10 # number of future frames to be extracted, frames are at 2Hz (10=5 seconds)
 frame_interval: null # number of frames to skip between each scene, if null, extracted scenes are non-overlapping
 

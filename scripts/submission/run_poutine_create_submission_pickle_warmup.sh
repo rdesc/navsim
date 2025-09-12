@@ -4,10 +4,10 @@ EMAIL='rodrigue.deschaetzen@mila.quebec'
 INSTITUTION='Mila - Quebec AI Institute, Universite de Montreal, Polytechnique Montreal, CIFAR AI Chair'
 COUNTRY='Canada'
 
-TRAIN_TEST_SPLIT=warmup_two_stage
-EVAL_MODE=val # val or test
-SYNTHETIC_SENSOR_PATH="$OPENSCENE_DATA_ROOT/warmup_two_stage/sensor_blobs"
-SYNTHETIC_SCENES_PATH="$OPENSCENE_DATA_ROOT/warmup_two_stage/synthetic_scene_pickles"
+TRAIN_TEST_SPLIT=warmup_two_stage  # warmup_two_stage or navhard_two_stage
+EVAL_MODE=val
+SYNTHETIC_SENSOR_PATH="$OPENSCENE_DATA_ROOT/$TRAIN_TEST_SPLIT/sensor_blobs"
+SYNTHETIC_SCENES_PATH="$OPENSCENE_DATA_ROOT/$TRAIN_TEST_SPLIT/synthetic_scene_pickles"
 
 # poutine agent args
 ORIGINAL_SENSOR_PATH="$OPENSCENE_DATA_ROOT/sensor_blobs/test"
@@ -16,7 +16,7 @@ if [ -n "$LOAD_PREDICTIONS_FROM_FILE" ]; then
   CACHE_DATASET_TO_FILE=""
   EXPERIMENT_NAME=submission_poutine_agent_${TRAIN_TEST_SPLIT}
 else
-  CACHE_DATASET_TO_FILE="$DATASET_ROOT/poutine_processed_navsim/dataset_pickles/ego_status_dataset_navsim_${EVAL_MODE}_split_${TRAIN_TEST_SPLIT}.json"
+  CACHE_DATASET_TO_FILE="$DATASET_ROOT/poutine_processed_navsim/dataset_pickles/ego_status_dataset_navsim_${EVAL_MODE}_split_${TRAIN_TEST_SPLIT}3.json"
   EXPERIMENT_NAME=submission_poutine_agent_dummy
 fi
 
@@ -34,3 +34,7 @@ python "$NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_create_submission_pickle.
   "country='$COUNTRY'" \
   "synthetic_sensor_path='$SYNTHETIC_SENSOR_PATH'" \
   "synthetic_scenes_path='$SYNTHETIC_SCENES_PATH'"
+
+if ! [ -n "$LOAD_PREDICTIONS_FROM_FILE" ]; then
+  echo -e "\nDataset was cached to file: $CACHE_DATASET_TO_FILE"
+fi

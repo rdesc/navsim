@@ -3,6 +3,7 @@ import os
 import pickle
 from typing import Optional
 
+from matplotlib import pyplot as plt
 import numpy as np
 from scipy.interpolate import CubicSpline, interp1d
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
@@ -13,18 +14,22 @@ from navsim.common.dataclasses import AgentInput, SensorConfig, Trajectory
 
 def interp_trajectory(
     traj, in_dt=1.0, out_dt=0.25, end_time=5.0,
-    min_disp=0.2, min_step=0.2, no_motion_tol=0.1,
-    history=False, compute_heading=False,
-    prepend_first_point=False, debug=False
+    min_disp=0.1, min_step=0.2, no_motion_tol=0.1,
+    history=False, compute_heading=False, debug=False
 ):
     orig_traj = np.array(traj)
     traj = orig_traj[:, :2].copy()  # ensure shape (N, 2)
     num_points = traj.shape[0]
-    t_tgt = np.arange(out_dt, end_time + 1e-6, out_dt)
+    if history:
+        t_tgt = np.arange(0, end_time + 1e-6, out_dt)
+    else:
+        t_tgt = np.arange(out_dt, end_time + 1e-6, out_dt)
     out_len = len(t_tgt)
 
     # --- check for degenerate trajectories ---
-    total_disp = np.linalg.norm(traj[-1] - traj[0]) if num_points > 1 else 0.0
+    total_disp = 0.0
+    if num_points > 1:
+        total_disp = np.linalg.norm(traj[0]) if history else np.linalg.norm(traj[-1])
     if num_points < 2 or total_disp < min_disp:
         print(f"Degenerate trajectory detected. num_points: {num_points}, total_disp: {total_disp:.2f} m")
         out = np.zeros((out_len, 2), dtype=np.float32) if not compute_heading else np.zeros((out_len, 3), dtype=np.float32)
@@ -55,8 +60,10 @@ def interp_trajectory(
             cs_y = CubicSpline(t_src[:cutoff], traj_with_anchor[:cutoff, 1], bc_type="natural")
             mask = t_tgt <= t_src[cutoff - 1]
             out[mask] = np.stack([cs_x(t_tgt[mask]), cs_y(t_tgt[mask])], axis=-1)
+        else:
+            cutoff = 1  # fallback to linear if not enough points
 
-        # linear part
+        # # linear part
         if cutoff < len(traj_with_anchor):
             lin_x = interp1d(t_src[cutoff - 1:], traj_with_anchor[cutoff - 1:, 0], kind="linear")
             lin_y = interp1d(t_src[cutoff - 1:], traj_with_anchor[cutoff - 1:, 1], kind="linear")
@@ -82,9 +89,21 @@ def interp_trajectory(
 
             out = np.hstack([out, headings[:, None]])
 
-    if prepend_first_point and history:
-        first_point = orig_traj[0, :2] if not compute_heading else orig_traj[0, :3]
-        out = np.vstack([first_point, out])
+    # --- visualization for debugging ---
+    if debug:
+        print("Orig traj shape:", orig_traj.shape, "Out shape:", out.shape)
+        print("Interpolated trajectory:\n", out)
+        plt.plot(orig_traj[:, 0], orig_traj[:, 1], 'o', color='red', label='Original Traj')
+        plt.quiver(orig_traj[:, 0], orig_traj[:, 1], np.cos(orig_traj[:, 2]), np.sin(orig_traj[:, 2]),
+                   angles='xy', scale_units='xy', scale=0.1, color='red', alpha=0.4)
+        plt.plot(out[:, 0], out[:, 1], '.', color='black', label='Interpolated Traj')
+        if compute_heading:
+            plt.quiver(out[:, 0], out[:, 1], np.cos(out[:, 2]), np.sin(out[:, 2]),
+                       angles='xy', scale_units='xy', scale=0.01, color='blue', alpha=0.4)
+        plt.title(f'Total displacement: {total_disp:.2f} m')
+        plt.legend()
+        plt.axis('equal')
+        plt.show()
 
     return out
 
@@ -114,6 +133,9 @@ class PoutineAgent(AbstractAgent):
 
         if self._cache_dataset_to_file:
             print(f"Caching evaluation dataset to {self._cache_dataset_to_file}... Will not be loading predictions from file.")
+            # check if file exists and is not empty
+            if os.path.exists(self._cache_dataset_to_file) and os.path.getsize(self._cache_dataset_to_file) > 0:
+                raise FileExistsError(f"Cache dataset file {self._cache_dataset_to_file} already exists.")
             with open(self._cache_dataset_to_file, 'w') as f:
                 f.write('')
             self._load_predictions_from_file = None  # disable loading predictions if caching
@@ -173,13 +195,7 @@ class PoutineAgent(AbstractAgent):
         
         history_trajectory = []
         for frame_idx in range(len(agent_input.ego_statuses)):
-            history_trajectory.append(agent_input.ego_statuses[frame_idx].ego_pose)
-        history_trajectory = interp_trajectory(history_trajectory,
-                                               in_dt=0.5,
-                                               out_dt=0.25,
-                                               end_time=1.5,  # only 1.5 seconds of history??
-                                               history=True,
-                                               prepend_first_point=True)
+            history_trajectory.append(agent_input.ego_statuses[frame_idx].ego_pose.tolist())
 
         intent_idx = np.argmax(agent_input.ego_statuses[-1].driving_command)
         intent = ["GO_LEFT", "GO_STRAIGHT", "GO_RIGHT", "UNKNOWN"][intent_idx]
@@ -211,13 +227,17 @@ class PoutineAgent(AbstractAgent):
                 "uuid": uuid,
                 "seq": 3,
                 "intent": intent,
-                "history_traj": history_trajectory.tolist(),
+                "history_traj_orig": history_trajectory,  # only 1.5 seconds of history
+                "history_traj": interp_trajectory(history_trajectory, in_dt=0.5, out_dt=0.25, end_time=1.5, history=True).tolist(),
                 "vel": [ego_velocity_2d.tolist()],
                 "accel": [ego_acceleration_2d.tolist()],
                 "jpeg_paths": jpeg_frames
             }))
             f.write('\n')
         
+        self._prediction_count += 1
+        print(f"Cached data for token {uuid}. Total cached: {self._prediction_count}")
+
         predictions_dummy = np.zeros((self._trajectory_sampling.num_poses, 3), dtype=np.float32)
         
         return Trajectory(predictions_dummy, self._trajectory_sampling)
