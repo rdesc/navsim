@@ -158,14 +158,15 @@ class PoutineAgent(AbstractAgent):
     def get_sensor_config(self) -> SensorConfig:
         """Inherited, see superclass."""
         return SensorConfig(
+            # NOTE: rdesc: there's a bug with loading `private_test_hard_two_stage` which gives OOM error when loading all cameras
             cam_f0=self._frame_indices,
             cam_l0=self._frame_indices,
-            cam_l1=self._frame_indices,
-            cam_l2=self._frame_indices,
+            cam_l1=False,  # self._frame_indices,
+            cam_l2=False,  # self._frame_indices,
             cam_r0=self._frame_indices,
-            cam_r1=self._frame_indices,
-            cam_r2=self._frame_indices,
-            cam_b0=self._frame_indices,
+            cam_r1=False,  # self._frame_indices,
+            cam_r2=False,  # self._frame_indices,
+            cam_b0=False,  # self._frame_indices,
             lidar_pc=False,
         )
 

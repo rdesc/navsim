@@ -10,7 +10,7 @@ SYNTHETIC_SENSOR_PATH="$OPENSCENE_DATA_ROOT/private_test_hard_two_stage/sensor_b
 SYNTHETIC_SCENES_PATH="$OPENSCENE_DATA_ROOT/private_test_hard_two_stage/openscene_meta_datas"
 
 # poutine agent args
-ORIGINAL_SENSOR_PATH="$OPENSCENE_DATA_ROOT/sensor_blobs/test"
+ORIGINAL_SENSOR_PATH="$OPENSCENE_DATA_ROOT/sensor_blobs/private_test_hard"
 LOAD_PREDICTIONS_FROM_FILE=${1:-""} # take from CLI arg, fallback to empty string if not provided
 if [ -n "$LOAD_PREDICTIONS_FROM_FILE" ]; then
   CACHE_DATASET_TO_FILE=""
@@ -35,3 +35,6 @@ python "$NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_create_submission_pickle_
   "synthetic_sensor_path='$SYNTHETIC_SENSOR_PATH'" \
   "synthetic_scenes_path='$SYNTHETIC_SCENES_PATH'"
   
+if ! [ -n "$LOAD_PREDICTIONS_FROM_FILE" ]; then
+  echo -e "\nDataset was cached to file: $CACHE_DATASET_TO_FILE"
+fi
