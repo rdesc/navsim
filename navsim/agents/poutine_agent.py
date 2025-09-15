@@ -197,6 +197,10 @@ class PoutineAgent(AbstractAgent):
         history_trajectory = []
         for frame_idx in range(len(agent_input.ego_statuses)):
             history_trajectory.append(agent_input.ego_statuses[frame_idx].ego_pose.tolist())
+            
+        future_trajectory = None
+        if 'future_traj' in dir(agent_input):
+            future_trajectory = agent_input.future_traj
 
         intent_idx = np.argmax(agent_input.ego_statuses[-1].driving_command)
         intent = ["GO_LEFT", "GO_STRAIGHT", "GO_RIGHT", "UNKNOWN"][intent_idx]
@@ -218,7 +222,7 @@ class PoutineAgent(AbstractAgent):
                 for root in self._jpeg_root_paths:  # could either be in original or synthetic sensor path
                     curr_path = f"{root}/{cam.camera_path}"
                     if os.path.exists(curr_path):
-                        jpegs_dict[cam_name] = curr_path
+                        jpegs_dict[cam_name] = curr_path  # TODO: relative path?
                         break
             jpeg_frames.append(jpegs_dict)
         
@@ -229,7 +233,12 @@ class PoutineAgent(AbstractAgent):
                 "seq": 3,
                 "intent": intent,
                 "history_traj_orig": history_trajectory,  # only 1.5 seconds of history
+                "future_traj_orig": future_trajectory.tolist() if future_trajectory is not None else None,
                 "history_traj": interp_trajectory(history_trajectory, in_dt=0.5, out_dt=0.25, end_time=1.5, history=True).tolist(),
+                "future_traj": (
+                    interp_trajectory(future_trajectory, in_dt=0.5, out_dt=0.25, end_time=4, history=False).tolist()
+                    if future_trajectory is not None else None
+                    ),
                 "vel": [ego_velocity_2d.tolist()],
                 "accel": [ego_acceleration_2d.tolist()],
                 "jpeg_paths": jpeg_frames

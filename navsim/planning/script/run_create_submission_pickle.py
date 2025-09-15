@@ -62,6 +62,8 @@ def run_test_evaluation(
             agent_input = input_loader.get_agent_input_from_token(token)
             
             # rdesc: add the token info to the agent input
+            scene = input_loader.get_scene_from_token(token)
+            agent_input.future_traj = scene.get_future_trajectory().poses
             agent_input.token = token
             
             trajectory = agent.compute_trajectory(agent_input)

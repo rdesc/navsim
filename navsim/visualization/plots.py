@@ -71,22 +71,34 @@ def plot_bev_frame(scene: Scene, frame_idx: int) -> Tuple[plt.Figure, plt.Axes]:
     return fig, ax
 
 
-def plot_bev_with_agent(scene: Scene, agent: AbstractAgent) -> Tuple[plt.Figure, plt.Axes]:
+def plot_bev_with_agent(scene: Scene, agent: AbstractAgent, ax=None) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots agent and human trajectory in birds-eye-view visualization
     :param scene: navsim scene dataclass
     :param agent: navsim agent
     :return: figure and ax object of matplotlib
     """
+    
+    is_second_stage = bool(scene.scene_metadata.corresponding_original_initial_token)
 
-    human_trajectory = scene.get_future_trajectory()
-    agent_trajectory = agent.compute_trajectory(scene.get_agent_input())
+    if not is_second_stage:
+        human_trajectory = scene.get_future_trajectory()
+    history_trajectory = scene.get_history_trajectory()
+    agent_input = scene.get_agent_input()
+    agent_input.token = scene.scene_metadata.initial_token
+    agent_trajectory = agent.compute_trajectory(agent_input)
 
     frame_idx = scene.scene_metadata.num_history_frames - 1
-    fig, ax = plt.subplots(1, 1, figsize=BEV_PLOT_CONFIG["figure_size"])
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=BEV_PLOT_CONFIG["figure_size"])
+    else:
+        fig = ax.figure
     add_configured_bev_on_ax(ax, scene.map_api, scene.frames[frame_idx])
-    add_trajectory_to_bev_ax(ax, human_trajectory, TRAJECTORY_CONFIG["human"])
+    if not is_second_stage:
+        add_trajectory_to_bev_ax(ax, human_trajectory, TRAJECTORY_CONFIG["human"])
+    add_trajectory_to_bev_ax(ax, history_trajectory, TRAJECTORY_CONFIG["human"])
     add_trajectory_to_bev_ax(ax, agent_trajectory, TRAJECTORY_CONFIG["agent"])
+    
     configure_bev_ax(ax)
     configure_ax(ax)
 

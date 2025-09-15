@@ -1,20 +1,22 @@
+TRAIN_TEST_SPLIT=${1}  # warmup_two_stage or navhard_two_stage
+LOAD_PREDICTIONS_FROM_FILE=${2:-""}
+EXPERIMENT_NAME=${3:-""}
+
 TEAM_NAME=''
 AUTHORS='Rodrigue de Schaetzen, Luke Rowe, Roger Girgis, Christopher Pal, Liam Paull'
 EMAIL='rodrigue.deschaetzen@mila.quebec'
 INSTITUTION='Mila - Quebec AI Institute, Universite de Montreal, Polytechnique Montreal, CIFAR AI Chair'
 COUNTRY='Canada'
 
-TRAIN_TEST_SPLIT=warmup_two_stage  # warmup_two_stage or navhard_two_stage
 EVAL_MODE=val
 SYNTHETIC_SENSOR_PATH="$OPENSCENE_DATA_ROOT/$TRAIN_TEST_SPLIT/sensor_blobs"
 SYNTHETIC_SCENES_PATH="$OPENSCENE_DATA_ROOT/$TRAIN_TEST_SPLIT/synthetic_scene_pickles"
 
 # poutine agent args
 ORIGINAL_SENSOR_PATH="$OPENSCENE_DATA_ROOT/sensor_blobs/test"
-LOAD_PREDICTIONS_FROM_FILE=${1:-""} # take from CLI arg, fallback to empty string if not provided
 if [ -n "$LOAD_PREDICTIONS_FROM_FILE" ]; then
   CACHE_DATASET_TO_FILE=""
-  EXPERIMENT_NAME=submission_poutine_agent_${TRAIN_TEST_SPLIT}
+  EXPERIMENT_NAME=${EXPERIMENT_NAME}_${TRAIN_TEST_SPLIT}
 else
   CACHE_DATASET_TO_FILE="$DATASET_ROOT/poutine_processed_navsim/dataset_pickles/ego_status_dataset_navsim_${EVAL_MODE}_split_${TRAIN_TEST_SPLIT}.json"
   EXPERIMENT_NAME=submission_poutine_agent_dummy
