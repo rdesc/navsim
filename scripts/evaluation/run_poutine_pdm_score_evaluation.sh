@@ -6,11 +6,11 @@ if [ $# -lt 3 ]; then
   exit 1
 fi
 
-TRAIN_TEST_SPLIT=$1  # warmup_two_stage or navhard_two_stage
+TRAIN_TEST_SPLIT=$1  # warmup_two_stage, navhard_two_stage or navtrain
 SUBMISSION_FILE_PATH=$2
 EXPERIMENT_NAME=$3
 
-CACHE_PATH=$NAVSIM_EXP_ROOT/metric_cache
+CACHE_PATH=$NAVSIM_EXP_ROOT/metric_cache_$TRAIN_TEST_SPLIT
 SYNTHETIC_SENSOR_PATH="$OPENSCENE_DATA_ROOT/$TRAIN_TEST_SPLIT/sensor_blobs"
 SYNTHETIC_SCENES_PATH="$OPENSCENE_DATA_ROOT/$TRAIN_TEST_SPLIT/synthetic_scene_pickles"
 

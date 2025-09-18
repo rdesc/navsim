@@ -131,6 +131,7 @@ def pdm_score_from_interpolated_trajectory(
     :param scorer: Scoring object to retrieve the sub-scores.
     :param traffic_agents_policy: background traffic used during simulation/scoring.
     :return: Dataclass of PDM sub-scores.
+    # TODO: this is not batched :( ... https://github.com/autonomousvision/navsim/issues/37
     """
 
     initial_ego_state = metric_cache.ego_state
