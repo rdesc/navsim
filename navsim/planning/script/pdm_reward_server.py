@@ -11,6 +11,7 @@ from hydra import initialize, compose
 from tqdm import tqdm
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
+from cachetools import LRUCache
 
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from navsim.common.dataclasses import Trajectory
@@ -68,7 +69,7 @@ assert (
     simulator.proposal_sampling == scorer.proposal_sampling
 ), "Simulator and scorer proposal sampling has to be identical"
 
-metric_cache_cached = {}
+metric_cache_cached = LRUCache(maxsize=1000)
 invalid_count = 0
 valid_count = 0
 
