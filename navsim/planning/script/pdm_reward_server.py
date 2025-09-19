@@ -27,16 +27,17 @@ CONFIG_PATH = "config/pdm_scoring"
 CONFIG_NAME = "default_run_pdm_score"
 TRAIN_TEST_SPLIT = "navtrain"
 CACHE_PATH = f"{os.getenv('NAVSIM_EXP_ROOT')}/metric_cache_{TRAIN_TEST_SPLIT}"
+DEBUG = True
 
 
 # -------------------------------------------------------------------
 # Logging setup
 # -------------------------------------------------------------------
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.INFO if not DEBUG else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
-logger = logging.getLogger("RewardServer")
+logger = logging.getLogger("PDMSRewardServer")
 
 # -------------------------------------------------------------------
 # NAVSIM Object instantiation
@@ -79,7 +80,6 @@ valid_count = 0
 def reward(
     pred_list: List,
     token_list: List,
-    debug: bool = True,
 ) -> List[float]:
     
     global invalid_count, valid_count, metric_cache_cached
@@ -92,7 +92,9 @@ def reward(
         
         if token in metric_cache_cached:
             metric_cache = metric_cache_cached[token]
+            logger.debug(f"Metric cache hit for token={token}")
         else:
+            logger.debug(f"Metric cache miss for token={token}")
             metric_cache = metric_cache_loader.get_from_token(token)  # NOTE: this is the part that is slow!!
             metric_cache_cached[token] = metric_cache
 
@@ -125,9 +127,7 @@ def reward(
             pdms = float(score_row_stage_one["pdm_score"].item())
             pdm_results.append([pdms, valid])
             logger.info(f"Token {token} pdm_score={pdms:.3f}")
-            
-            if debug:
-                logger.debug(f"Token {token}: " + json.dumps(json.loads(score_row_stage_one.iloc[0].to_json()), indent=2))
+            logger.debug(f"Token {token}: " + json.dumps(json.loads(score_row_stage_one.iloc[0].to_json()), indent=2))
         else:
             invalid_count += 1
             pdm_results.append([0.0, valid])
