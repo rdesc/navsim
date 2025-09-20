@@ -8,6 +8,7 @@ from pathlib import Path
 
 from hydra.utils import instantiate
 from hydra import initialize, compose
+import pandas as pd
 from tqdm import tqdm
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
@@ -58,6 +59,12 @@ subscore_weights.history_comfort_weight = 2.0             # default 2.0
 subscore_weights.two_frame_extended_comfort_weight = 2.0  # default 2.0
 subscore_weights.human_penalty_filter = False  # NOTE: this is broken in the e2e challenge code, so disable, right??
 
+# custom soft weights for penalty terms
+no_at_fault_collisions_weight = 1e-1
+drivable_area_compliance_weight = 1e-1
+driving_direction_compliance_weight = 1e-1
+traffic_light_compliance_weight = 1e-1
+
 metric_cache_path = Path(cfg.metric_cache_path)
 metric_cache_loader = MetricCacheLoader(metric_cache_path)
 simulator: PDMSimulator = instantiate(cfg.simulator)
@@ -73,6 +80,48 @@ assert (
 metric_cache_cached = LRUCache(maxsize=1000)
 invalid_count = 0
 valid_count = 0
+running_average_pdms = 0.0
+running_average_pdms_valid = 0.0
+
+
+def compute_soft_pdms(df: pd.DataFrame) -> float:
+    """Compute a soft PDM score using custom weights for penalty terms."""
+    # Extract individual metrics from the DataFrame
+    ego_progress = df["ego_progress"].item()
+    time_to_collision_within_bound = df["time_to_collision_within_bound"].item()
+    lane_keeping = df["lane_keeping"].item()
+    history_comfort = df["history_comfort"].item()
+    
+    no_at_fault_collisions = df["no_at_fault_collisions"].item()
+    drivable_area_compliance = df["drivable_area_compliance"].item()
+    driving_direction_compliance = df["driving_direction_compliance"].item()
+    traffic_light_compliance = df["traffic_light_compliance"].item()
+
+    # Compute weighted metrics
+    weighted_metrics = (
+        ego_progress * subscore_weights.progress_weight +
+        time_to_collision_within_bound * subscore_weights.ttc_weight +
+        lane_keeping * subscore_weights.lane_keeping_weight +
+        history_comfort * subscore_weights.history_comfort_weight
+    ) / (
+        subscore_weights.progress_weight +
+        subscore_weights.ttc_weight +
+        subscore_weights.lane_keeping_weight +
+        subscore_weights.history_comfort_weight
+    )  # normalize to sum to 1
+    
+    # Compute penalty metrics with custom weights
+    penalty_metrics = (
+        (no_at_fault_collisions or no_at_fault_collisions_weight) *
+        (drivable_area_compliance or drivable_area_compliance_weight) *
+        (driving_direction_compliance or driving_direction_compliance_weight) *
+        (traffic_light_compliance or traffic_light_compliance_weight)
+    )
+
+    # Compute soft PDM score as the average of weighted metrics
+    soft_pdms = weighted_metrics * penalty_metrics
+
+    return soft_pdms
 
 # -------------------------------------------------------------------
 # Reward function
@@ -81,8 +130,8 @@ def reward(
     pred_list: List,
     token_list: List,
 ) -> List[float]:
-    
-    global invalid_count, valid_count, metric_cache_cached
+
+    global invalid_count, valid_count, metric_cache_cached, running_average_pdms, running_average_pdms_valid
 
     pdm_results = []
 
@@ -125,8 +174,12 @@ def reward(
         if valid:
             valid_count += 1
             pdms = float(score_row_stage_one["pdm_score"].item())
-            pdm_results.append([pdms, valid])
-            logger.info(f"Token {token} pdm_score={pdms:.3f}")
+            
+            soft_pdms = compute_soft_pdms(score_row_stage_one)
+            
+            pdm_results.append([soft_pdms, valid])
+            logger.info(f"Token {token} pdm_score={pdms:.3f}, soft_pdms={soft_pdms:.3f}")
+            
             logger.debug(f"Token {token}: " + json.dumps(json.loads(score_row_stage_one.iloc[0].to_json()), indent=2))
         else:
             invalid_count += 1
@@ -134,6 +187,15 @@ def reward(
             
         logger.info(f"Valid count: {valid_count}, Invalid count: {invalid_count}")
         logger.info(f"Token {token} pdm_score computation took {(time.time() - start_time)*1000:.2f} ms")
+
+    curr_avg = np.mean([r for r, v in pdm_results])
+    curr_avg_valid = np.mean([r for r, v in pdm_results if v])
+    total_count = valid_count + invalid_count
+    running_average_pdms = (running_average_pdms * (total_count - 1) + curr_avg * len(pdm_results)) / total_count
+    running_average_pdms_valid = (running_average_pdms_valid * (valid_count - 1) + curr_avg_valid * len([r for r, v in pdm_results if v])) / valid_count if valid_count > 0 else 0.0
+
+    logger.info(f"Running average PDMS: {running_average_pdms:.3f}")
+    logger.info(f"Running average PDMS (valid only): {running_average_pdms_valid:.3f}")
 
     return pdm_results
 
@@ -179,20 +241,3 @@ def compute_reward(item: TrajectoryInput):
         logger.info(f"Single reward computed for token={token_id}, reward={float(r):.3f}")
         
     return {"reward": float(r), "valid": valid}
-
-# @app.post("/reward_batch")
-# def compute_reward_batch(batch: BatchInput):
-#     rewards = []
-#     for item in batch.items:
-#         pred = np.array(item.pred, dtype=np.float32)
-#         r = reward(pred, item.token, navsim_objs)
-#         rewards.append(float(r))
-#     logger.info(f"Batch reward computed for {len(batch.items)} items.")
-#     return {"rewards": rewards}
-
-# TODO: need to print the predicted trajectories for debugging
-# TODO: why do we have so many 0s and 1s?
-# TODO: recompute the PDM score with traffic agent enabled in the run_pdm_score_from_submission2
-# TODO: what does these trajectories look like for the invalid examples?
-# TODO: do we have diversity in the trajectories?
-# TODO: check params: temperature = 1.0, top-p of 1.0, and top-k of 0.0
