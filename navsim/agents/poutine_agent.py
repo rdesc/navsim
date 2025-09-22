@@ -135,7 +135,11 @@ class PoutineAgent(AbstractAgent):
             print(f"Caching evaluation dataset to {self._cache_dataset_to_file}... Will not be loading predictions from file.")
             # check if file exists and is not empty
             if os.path.exists(self._cache_dataset_to_file) and os.path.getsize(self._cache_dataset_to_file) > 0:
-                raise FileExistsError(f"Cache dataset file {self._cache_dataset_to_file} already exists.")
+                with open(self._cache_dataset_to_file, 'r') as f:
+                    num_lines = sum(1 for _ in f)
+                raise FileExistsError(
+                    f"Cache dataset file {self._cache_dataset_to_file} already exists with {num_lines} lines."
+                )
             with open(self._cache_dataset_to_file, 'w') as f:
                 f.write('')
             self._load_predictions_from_file = None  # disable loading predictions if caching
@@ -222,7 +226,7 @@ class PoutineAgent(AbstractAgent):
                 for root in self._jpeg_root_paths:  # could either be in original or synthetic sensor path
                     curr_path = f"{root}/{cam.camera_path}"
                     if os.path.exists(curr_path):
-                        jpegs_dict[cam_name] = curr_path  # TODO: relative path?
+                        jpegs_dict[cam_name] = curr_path.split('dataset/')[-1]
                         break
             jpeg_frames.append(jpegs_dict)
         
