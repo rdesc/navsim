@@ -69,8 +69,11 @@ metric_cache_path = Path(cfg.metric_cache_path)
 metric_cache_loader = MetricCacheLoader(metric_cache_path)
 simulator: PDMSimulator = instantiate(cfg.simulator)
 scorer: PDMScorer = instantiate(cfg.scorer)
-traffic_agents_policy: AbstractTrafficAgentsPolicy = instantiate(
+traffic_agents_policy_non_reactive: AbstractTrafficAgentsPolicy = instantiate(
     cfg.traffic_agents_policy.non_reactive, simulator.proposal_sampling
+)
+traffic_agents_policy_reactive: AbstractTrafficAgentsPolicy = instantiate(
+    cfg.traffic_agents_policy.reactive, simulator.proposal_sampling
 )
 
 assert (
@@ -158,7 +161,7 @@ def reward(
                 future_sampling=simulator.proposal_sampling,
                 simulator=simulator,
                 scorer=scorer,
-                traffic_agents_policy=traffic_agents_policy,
+                traffic_agents_policy=traffic_agents_policy_non_reactive,
             )
             pdms = float(score_row_stage_one["pdm_score"].item())
             
@@ -182,17 +185,48 @@ def reward(
             
             logger.debug(f"Token {token}: " + json.dumps(json.loads(score_row_stage_one.iloc[0].to_json()), indent=2))
         else:
-            invalid_count += 1
-            pdm_results.append([0.0, valid])
+            # Retry once with reactive traffic agents if invalid
+            try:
+                score_row_stage_one, _ = pdm_score(
+                    metric_cache=metric_cache,
+                    model_trajectory=Trajectory(pred, TrajectorySampling(time_horizon=4, interval_length=0.25)),
+                    future_sampling=simulator.proposal_sampling,
+                    simulator=simulator,
+                    scorer=scorer,
+                    traffic_agents_policy=traffic_agents_policy_reactive,
+                )
+                pdms = float(score_row_stage_one["pdm_score"].item())
+                if 0.0 <= pdms <= 1.0:
+                    valid = True
+                    valid_count += 1
+                    soft_pdms = compute_soft_pdms(score_row_stage_one)
+                    pdm_results.append([soft_pdms, valid])
+                    logger.info(f"Token {token} pdm_score={pdms:.3f} (retry), soft_pdms={soft_pdms:.3f}")
+                    logger.debug(f"Token {token} (retry): " + json.dumps(json.loads(score_row_stage_one.iloc[0].to_json()), indent=2))
+                else:
+                    invalid_count += 1
+                    pdm_results.append([0.0, False])
+                    logger.warning(f"Invalid PDM score range for token={token} (retry): {pdms}")
+            except Exception as e2:
+                invalid_count += 1
+                pdm_results.append([0.0, False])
+                logger.warning(f"Error occurred while retrying PDM score for token={token}: {e2}")
             
         logger.info(f"Valid count: {valid_count}, Invalid count: {invalid_count}")
         logger.info(f"Token {token} pdm_score computation took {(time.time() - start_time)*1000:.2f} ms")
 
     curr_avg = np.mean([r for r, v in pdm_results])
-    curr_avg_valid = np.mean([r for r, v in pdm_results if v])
+    valid_results = [r for r, v in pdm_results if v]
+    if valid_results:
+        curr_avg_valid = np.mean(valid_results)
+    else:
+        curr_avg_valid = 0.0
     total_count = valid_count + invalid_count
     running_average_pdms = (running_average_pdms * (total_count - 1) + curr_avg * len(pdm_results)) / total_count
-    running_average_pdms_valid = (running_average_pdms_valid * (valid_count - 1) + curr_avg_valid * len([r for r, v in pdm_results if v])) / valid_count if valid_count > 0 else 0.0
+    if valid_count > 0 and valid_results:
+        running_average_pdms_valid = (running_average_pdms_valid * (valid_count - 1) + curr_avg_valid * len(valid_results)) / valid_count
+    else:
+        running_average_pdms_valid = 0.0
 
     logger.info(f"Running average PDMS: {running_average_pdms:.3f}")
     logger.info(f"Running average PDMS (valid only): {running_average_pdms_valid:.3f}")
@@ -241,3 +275,24 @@ def compute_reward(item: TrajectoryInput):
         logger.info(f"Single reward computed for token={token_id}, reward={float(r):.3f}")
         
     return {"reward": float(r), "valid": valid}
+
+
+def main() -> None:
+    """
+    Main entrypoint for debugging PDMS reward server
+    """
+    import numpy as np
+    score_rows = reward(
+        pred_list=[np.array([[2.7, 0. ],
+       [4.4, 0. ],
+       [5.1, 0. ],
+       [5.2, 0. ],
+       [5.1, 0. ]], dtype=np.float32)],
+        token_list=["0455406f9d1456f6"],
+    )
+    
+    print(score_rows)
+
+
+if __name__ == "__main__":
+    main()
