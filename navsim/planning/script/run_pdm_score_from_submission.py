@@ -21,6 +21,7 @@ from navsim.common.dataclasses import PDMResults, Trajectory
 from navsim.common.dataloader import MetricCacheLoader
 from navsim.common.enums import SceneFrameType
 from navsim.evaluate.pdm_score import pdm_score
+from navsim.planning.script.builders.worker_pool_builder import build_worker
 from navsim.planning.simulation.planner.pdm_planner.scoring.pdm_scorer import PDMScorer
 from navsim.planning.simulation.planner.pdm_planner.scoring.scene_aggregator import SceneAggregator
 from navsim.planning.simulation.planner.pdm_planner.simulation.pdm_simulator import PDMSimulator
@@ -298,6 +299,8 @@ def main(cfg: DictConfig) -> None:
     assert (
         simulator.proposal_sampling == scorer.proposal_sampling
     ), "Simulator and scorer proposal sampling has to be identical"
+    
+    # worker = build_worker(cfg)
 
     with open(submission_file_path, "rb") as f:
         submission_data = pickle.load(f)
@@ -311,6 +314,7 @@ def main(cfg: DictConfig) -> None:
     first_stage_output = first_stage_output[0]
     second_stage_output = second_stage_output[0]
 
+    # TODO: can we use the worker here to parallelize scoring?
     score_rows = run_pdm_score(
         cfg=cfg,
         first_stage_agent_output=first_stage_output,

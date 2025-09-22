@@ -21,12 +21,3 @@ python $NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_pdm_score_from_submission.
   metric_cache_path=$CACHE_PATH \
   synthetic_sensor_path=$SYNTHETIC_SENSOR_PATH \
   synthetic_scenes_path=$SYNTHETIC_SCENES_PATH
-
-# /home/jovyan/workspace/navsim_workspace/exp/submission_poutine_agent_warmup_two_stage/2025.09.12.12.56.22/submission.pkl
-# /home/jovyan/workspace/navsim_workspace/exp/submission_poutine_agent_warmup_two_stage/2025.09.12.13.16.23/submission.pkl
-
-# /home/jovyan/shared/RodDeSc/experiments/qwen2_5vl_full_sft_navsim_cot_waymo_val_poutine_1300_ckpt_200/navsim_eval_no-cot_warmup_two_stage/preds_dict.pkl: 
-# /home/jovyan/workspace/navsim_workspace/exp/submission_poutine_agent_warmup_two_stage/2025.09.12.16.24.59/submission.pkl
-
-# /home/jovyan/shared/RodDeSc/experiments/qwen2_5vl_full_sft_navsim_cot_waymo_val_poutine_1300/navsim_eval_no-cot_warmup_two_stage/preds_dict_20250912_182943.pkl
-# /home/jovyan/workspace/navsim_workspace/exp/submission_poutine_agent_warmup_two_stage/2025.09.12.18.32.25/submission.pkl
