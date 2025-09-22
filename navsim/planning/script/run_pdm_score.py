@@ -88,6 +88,8 @@ def run_pdm_score(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[p
         try:
             metric_cache = metric_cache_loader.get_from_token(token)
             agent_input = scene_loader.get_agent_input_from_token(token)
+            # rdesc: add the token info to the agent input
+            agent_input.token = token
             if agent.requires_scene:
                 scene = scene_loader.get_scene_from_token(token)
                 trajectory = agent.compute_trajectory(agent_input, scene)
@@ -142,6 +144,8 @@ def run_pdm_score(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[p
         try:
             metric_cache = metric_cache_loader.get_from_token(token)
             agent_input = scene_loader.get_agent_input_from_token(token)
+            # rdesc: add the token info to the agent input
+            agent_input.token = token
             if agent.requires_scene:
                 scene = scene_loader.get_scene_from_token(token)
                 trajectory = agent.compute_trajectory(agent_input, scene)
